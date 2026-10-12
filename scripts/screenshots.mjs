@@ -103,14 +103,14 @@ async function shoot(path, file, ready) {
 }
 
 await shoot("/inbox", "bandeja.png", async () => {
-  await page.getByRole("button", { name: /María Fernanda/ }).first().click();
-  await page.getByText("¿Tienen taladros inalámbricos?").waitFor();
+  await page.getByRole("button", { name: /Marta Giménez/ }).first().click();
+  await page.getByText("Hola, ¿hacéis sistemas para que el WhatsApp de mi clínica conteste solo?").waitFor();
   await page.getByText("Etapa del pipeline").waitFor();
 });
 
 await shoot("/pipeline", "pipeline.png", async () => {
   await page.getByText("Interesado").first().waitFor();
-  await page.getByText("María Fernanda López").first().waitFor();
+  await page.getByText("Marta Giménez").first().waitFor();
 });
 
 await shoot("/lab", "laboratorio.png", async () => {

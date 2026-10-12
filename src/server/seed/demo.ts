@@ -4,11 +4,15 @@ import { schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 
 /**
- * Negocio de demostración "Ferretería El Martillo" (FR-075).
+ * Negocio de demostración "Kyberon Studio" (FR-075): una agencia de
+ * desarrollo de software y automatización para empresas.
  * Idempotente: borra los datos demo previos de la organización (scoped por
  * los teléfonos demo) y reinserta. El KB queda lleno EXCEPTO garantías y
  * devoluciones — hueco INTENCIONAL para que el Laboratorio encuentre algo
  * real en la primera corrida.
+ *
+ * Sin precios a propósito: la agencia entrega alcance y presupuesto por
+ * escrito tras el diagnóstico, y el agente de la demo no da ninguno.
  */
 
 type Db = ReturnType<typeof getDb>;
@@ -16,100 +20,103 @@ type Db = ReturnType<typeof getDb>;
 const HOURS = 60 * 60 * 1000;
 
 const DEMO_CONTACTS: {
+  /** Teléfono sintético: el prefijo 34 seguido de 0 no existe, así nadie real lo recibe. */
   phone: string;
   name: string;
   notes?: string;
-  stage: string;
+  /** Etapas candidatas por nombre, de la más específica a la genérica. */
+  stage: string[];
   thread: { dir: "in" | "out"; text: string; hoursAgo: number; ai?: boolean }[];
 }[] = [
   {
-    phone: "5215612340001",
-    name: "María Fernanda López",
-    stage: "Interesado",
-    notes: "Remodela su cocina; busca herramienta eléctrica.",
+    phone: "34000000001",
+    name: "Marta Giménez",
+    stage: ["Reunión agendada", "Interesado"],
+    notes: "Clínica dental en Valencia; quiere que WhatsApp conteste solo y agende citas.",
     thread: [
-      { dir: "in", text: "Hola, ¿tienen taladros inalámbricos?", hoursAgo: 5 },
-      { dir: "out", text: "¡Hola María! Sí: tenemos el Truper 20V en $1,899 MXN y el DeWalt 20V MAX en $3,450 MXN, ambos con batería incluida.", hoursAgo: 5, ai: true },
-      { dir: "in", text: "¿El Truper incluye brocas?", hoursAgo: 4 },
-      { dir: "out", text: "Incluye un juego básico de 5 brocas para concreto y madera. Si necesitas más, el juego de 30 piezas está en $349 MXN.", hoursAgo: 4, ai: true },
-      { dir: "in", text: "Perfecto, me interesa el Truper. ¿Me lo apartan?", hoursAgo: 3 },
+      { dir: "in", text: "Hola, ¿hacéis sistemas para que el WhatsApp de mi clínica conteste solo?", hoursAgo: 5 },
+      { dir: "out", text: "Hola, Marta. Sí: montamos atención al cliente automática en WhatsApp y web, que responde a cualquier hora y agenda la cita. ¿Qué programa usa hoy para las citas?", hoursAgo: 5, ai: true },
+      { dir: "in", text: "Una agenda en el ordenador de recepción, nada conectado", hoursAgo: 4 },
+      { dir: "out", text: "Entendido. Lo habitual es empezar con una reunión de diagnóstico de 30 minutos para ver cómo conectarlo. ¿Le propongo un hueco?", hoursAgo: 4, ai: true },
+      { dir: "in", text: "Sí, me interesa. ¿Puede ser esta semana?", hoursAgo: 3 },
     ],
   },
   {
-    phone: "5215612340002",
-    name: "Carlos Ramírez",
-    stage: "En conversación",
+    phone: "34000000002",
+    name: "Carlos Ramos",
+    stage: ["Auditoría hecha", "En conversación"],
     thread: [
-      { dir: "in", text: "Buenas, ¿cuánto el bulto de cemento gris?", hoursAgo: 8 },
-      { dir: "out", text: "¡Hola Carlos! El bulto de 50 kg está en $245 MXN. Por 10 o más te queda en $232 MXN cada uno.", hoursAgo: 8, ai: true },
-      { dir: "in", text: "Ocupo 15 bultos, ¿hacen entrega en Naucalpan?", hoursAgo: 7 },
-      { dir: "out", text: "Sí, entregamos en toda la zona. El flete es de $150 MXN y llega el mismo día si confirmas antes de la 1 pm. Total: 15 × $232 + $150 = $3,630 MXN.", hoursAgo: 7, ai: true },
+      { dir: "in", text: "Buenas, he hecho la auditoría gratis de mi web y me sale un 41 sobre 100", hoursAgo: 8 },
+      { dir: "out", text: "Hola, Carlos. La auditoría analiza la velocidad, cómo la ve Google, el diseño y por dónde se escapan clientes. Si quiere el informe completo, se lo enviamos por correo.", hoursAgo: 8, ai: true },
+      { dir: "in", text: "Sí, mándamelo. ¿Y arreglarlo cuánto cuesta?", hoursAgo: 7 },
+      { dir: "out", text: "Depende de cada caso: tras un diagnóstico se entregan el alcance y el presupuesto por escrito. ¿Le agendo una reunión de 30 minutos?", hoursAgo: 7, ai: true },
     ],
   },
   {
-    phone: "5215612340003",
-    name: "Lupita Hernández",
-    stage: "Cliente",
-    notes: "Compra recurrente para su taller de carpintería.",
+    phone: "34000000003",
+    name: "Lucía Herrero",
+    stage: ["Cliente"],
+    notes: "Gestoría en Zaragoza. Alta de clientes automática en marcha.",
     thread: [
-      { dir: "in", text: "Hola de nuevo, ya me quedé sin barniz 😅", hoursAgo: 30 },
-      { dir: "out", text: "¡Hola Lupita! Te apartamos 2 litros del barniz marino que siempre llevas: $520 MXN. ¿Te los mando con tu pedido de lijas?", hoursAgo: 30, ai: true },
-      { dir: "in", text: "Sí porfa, junto todo en un solo envío", hoursAgo: 29 },
-      { dir: "out", text: "Listo, sale hoy mismo. Total: $780 MXN con las lijas. ¡Gracias por tu compra!", hoursAgo: 29, ai: true },
+      { dir: "in", text: "Hola de nuevo, el alta automática ya nos ahorra un montón de tiempo 🙌", hoursAgo: 30 },
+      { dir: "out", text: "Nos alegra saberlo, Lucía. ¿Hay algo que quiera ajustar ahora que lleva unas semanas en uso?", hoursAgo: 30, ai: true },
+      { dir: "in", text: "Sí, me gustaría que el correo de bienvenida saliera también en inglés", hoursAgo: 29 },
+      { dir: "out", text: "Anotado. Paso la petición al equipo y le escriben en horario de atención.", hoursAgo: 29, ai: true },
     ],
   },
   {
-    phone: "5215612340004",
-    name: "Jorge Castillo",
-    stage: "Nuevo",
+    phone: "34000000004",
+    name: "Javi Ortega",
+    stage: ["Nuevo"],
     thread: [
-      { dir: "in", text: "ke onda, tienen pintura vinilica blanka de 19 lts?", hoursAgo: 2 },
-      { dir: "out", text: "¡Qué tal Jorge! Sí: la cubeta de 19 L de vinílica blanca está en $1,150 MXN (rinde ~90 m²). ¿La quieres mate o satinada?", hoursAgo: 2, ai: true },
+      { dir: "in", text: "ola, aceis algo para q un bar no pierda clientes x internet?", hoursAgo: 2 },
+      { dir: "out", text: "Hola, Javi. Sí, ayudamos a negocios que pierden clientes por su web. Si su bar ya tiene página, puede analizarla gratis en kyberonstudio.com: en un minuto le da una nota sobre 100.", hoursAgo: 2, ai: true },
     ],
   },
   {
-    phone: "5215612340005",
-    name: "Ana Sofía Torres",
-    stage: "Interesado",
+    phone: "34000000005",
+    name: "Ana Beltrán",
+    stage: ["Propuesta enviada", "Interesado"],
     thread: [
-      { dir: "in", text: "Hola, vi su anuncio. ¿Manejan material eléctrico?", hoursAgo: 12 },
-      { dir: "out", text: "¡Hola Ana! Sí: cable, contactos, pastillas y centros de carga. ¿Qué necesitas para tu proyecto?", hoursAgo: 12, ai: true },
-      { dir: "in", text: "Necesito 100 m de cable calibre 12 y 10 contactos dobles", hoursAgo: 11 },
-      { dir: "out", text: "Te cotizo: rollo de 100 m cal. 12 THW $1,890 MXN + 10 contactos dobles Volteck $35 c/u = $2,240 MXN. ¿Te lo preparo?", hoursAgo: 11, ai: true },
-      { dir: "in", text: "Déjame confirmar con el electricista y te digo", hoursAgo: 10 },
+      { dir: "in", text: "Hola, vi vuestro anuncio. ¿Trabajáis con inmobiliarias?", hoursAgo: 12 },
+      { dir: "out", text: "Sí, Ana. Tenemos software y automatización pensados para inmobiliarias. ¿Qué le quita más tiempo ahora mismo?", hoursAgo: 12, ai: true },
+      { dir: "in", text: "Pasar a mano los contactos al CRM y contestar siempre lo mismo", hoursAgo: 11 },
+      { dir: "out", text: "Las dos cosas se pueden automatizar: la integración con su CRM y la atención automática. El alcance y el presupuesto se entregan por escrito tras el diagnóstico.", hoursAgo: 11, ai: true },
+      { dir: "in", text: "Vale, lo comento con mi socio y os digo", hoursAgo: 10 },
     ],
   },
   {
-    phone: "5215612340006",
-    name: "Roberto Mendoza",
-    stage: "Perdido",
-    notes: "Buscaba precio de mayoreo que no podemos igualar.",
+    phone: "34000000006",
+    name: "Roberto Medina",
+    stage: ["Perdido"],
+    notes: "Quería un precio cerrado por chat, sin diagnóstico. No encaja.",
     thread: [
-      { dir: "in", text: "¿A cómo la tonelada de varilla 3/8?", hoursAgo: 96 },
-      { dir: "out", text: "Hola Roberto: la tonelada de varilla 3/8 está en $17,800 MXN. ¿Para cuándo la necesitas?", hoursAgo: 96, ai: true },
-      { dir: "in", text: "Uy no, en otro lado me la dan en 16", hoursAgo: 95 },
-      { dir: "out", text: "Entiendo. Ese precio no lo alcanzamos, pero si tu proveedor queda mal aquí estamos con entrega el mismo día. ¡Éxito con la obra!", hoursAgo: 95, ai: true },
+      { dir: "in", text: "¿Cuánto me cobráis por una tienda online sencilla?", hoursAgo: 96 },
+      { dir: "out", text: "Hola, Roberto. No damos precios por chat: depende de cada caso y se entrega por escrito tras un diagnóstico. ¿Le viene bien una reunión de 30 minutos?", hoursAgo: 96, ai: true },
+      { dir: "in", text: "No, yo necesito un precio ya, en otro sitio me lo dan cerrado", hoursAgo: 95 },
+      { dir: "out", text: "Lo entiendo. Si más adelante quiere compararlo con un presupuesto a medida, aquí estamos.", hoursAgo: 95, ai: true },
     ],
   },
   {
-    phone: "5215612340007",
-    name: "Paty Domínguez",
-    stage: "En conversación",
+    phone: "34000000007",
+    name: "Paula Domínguez",
+    stage: ["Auditoría hecha", "En conversación"],
     thread: [
-      { dir: "in", text: "Hola, ¿tienen impermeabilizante? Se me llueve la azotea 😩", hoursAgo: 26 },
-      { dir: "out", text: "¡Hola Paty! Claro: el impermeabilizante acrílico 5 años (cubeta 19 L) está en $1,680 MXN, cubre ~40 m². ¿De cuántos metros es tu azotea?", hoursAgo: 26, ai: true },
-      { dir: "in", text: "Como de 60 metros, ¿me alcanzaría con dos?", hoursAgo: 25 },
+      { dir: "in", text: "Hola, pierdo muchísimo tiempo contestando correos de clientes 😩", hoursAgo: 26 },
+      { dir: "out", text: "Hola, Paula. Tenemos un servicio de gestión automática del correo: lo ordena, deja las respuestas preparadas y le resume el día. ¿Cuántos correos recibe al día, más o menos?", hoursAgo: 26, ai: true },
+      { dir: "in", text: "Unos 80, y la mitad preguntan lo mismo", hoursAgo: 25 },
     ],
   },
   {
-    phone: "5215612340008",
-    name: "Don Chuy Aguilar",
-    stage: "Cliente",
+    phone: "34000000008",
+    name: "Jesús Aguilar",
+    stage: ["Cliente"],
+    notes: "Taller mecánico. Usa el software de gestión de talleres.",
     thread: [
-      { dir: "in", text: "Joven, mándeme la lista de lo de siempre para la cuadrilla", hoursAgo: 50 },
-      { dir: "out", text: "¡Con gusto Don Chuy! Su pedido habitual: 5 bultos de cemento, 2 de mortero, 1 rollo de alambre recocido y 3 kg de clavo. Total: $1,585 MXN. ¿Se lo mandamos a la obra de Av. Juárez?", hoursAgo: 50, ai: true },
-      { dir: "in", text: "Ándele, ahí mismo. Se paga contra entrega como siempre", hoursAgo: 49 },
-      { dir: "out", text: "Perfecto, sale en la camioneta de las 4. ¡Gracias Don Chuy!", hoursAgo: 49, ai: true },
+      { dir: "in", text: "Buenas, el programa del taller va muy bien. ¿Se puede conectar con la facturación?", hoursAgo: 50 },
+      { dir: "out", text: "Hola, Jesús. Sí, si su programa de facturación tiene API o integración, y la mayoría la tiene. ¿Cuál usa?", hoursAgo: 50, ai: true },
+      { dir: "in", text: "Uno que nos puso la gestoría, luego le digo el nombre", hoursAgo: 49 },
+      { dir: "out", text: "Perfecto. Cuando lo tenga, lo vemos con el equipo.", hoursAgo: 49, ai: true },
     ],
   },
 ];
@@ -118,15 +125,58 @@ const DEMO_KB: { kind: "qa" | "block"; question?: string; answer?: string; conte
   {
     kind: "block",
     content:
-      "Ferretería El Martillo — ferretería familiar con 20 años en la colonia Centro. Vendemos herramienta manual y eléctrica, material de construcción, pintura, plomería y material eléctrico. Atendemos a público general, maestros de obra y talleres.",
+      "SOBRE KYBERON STUDIO\nKyberon Studio es una agencia de desarrollo de software y automatización para pymes y empresas en España. Hace software a medida, sistemas que contestan a los clientes las 24 horas y conecta los programas de la empresa para que nadie copie datos a mano.\nWeb: https://www.kyberonstudio.com\nCorreo: hola@kyberonstudio.com\nHorario de atención de las personas del equipo: de lunes a viernes, de 10:00 a 14:00 y de 16:00 a 19:00, hora de Madrid.",
   },
-  { kind: "qa", question: "¿Cuál es el horario?", answer: "Lunes a sábado de 8:00 a 19:00 y domingos de 9:00 a 14:00." },
-  { kind: "qa", question: "¿Dónde están ubicados?", answer: "Av. Hidalgo 245, colonia Centro. Hay estacionamiento gratuito para clientes en la calle lateral." },
-  { kind: "qa", question: "¿Hacen envíos a domicilio?", answer: "Sí: entrega el mismo día en la zona si confirmas antes de la 1 pm. Flete local $150 MXN; gratis en compras mayores a $3,000 MXN." },
-  { kind: "qa", question: "¿Qué métodos de pago aceptan?", answer: "Efectivo, tarjeta (crédito/débito), transferencia SPEI y pago contra entrega en pedidos locales." },
-  { kind: "qa", question: "¿Dan factura?", answer: "Sí, facturamos el mismo día. Envíanos tu constancia de situación fiscal y el ticket de compra." },
-  { kind: "qa", question: "¿Tienen precios de mayoreo?", answer: "Sí: en cemento, mortero y varilla hay precio especial a partir de 10 unidades; en pintura a partir de 5 cubetas. Pide tu cotización por WhatsApp." },
-  { kind: "qa", question: "¿Qué marcas de herramienta manejan?", answer: "Truper, Pretul, DeWalt, Makita y Ryobi en eléctrica; Volteck y Condulac en material eléctrico; Comex y Berel en pintura." },
+  {
+    kind: "block",
+    content:
+      "CÓMO TRABAJA KYBERON STUDIO\n1. Diagnóstico: se ve con el cliente dónde pierde tiempo o clientes.\n2. Diseño: qué automatizar y con qué. El alcance y el presupuesto se entregan por escrito.\n3. Desarrollo: se construye, se conecta a los programas del cliente y se prueba.\n4. Lanzamiento: se forma al equipo del cliente y se sigue ajustando con datos reales.\n5. Mantenimiento: Kyberon lo mantiene después del lanzamiento.\nUn proyecto estándar tarda entre tres y seis semanas desde la primera reunión.",
+  },
+  {
+    kind: "block",
+    content:
+      "AUDITORÍA WEB GRATIS\nEl cliente escribe la dirección de su web en la página principal de kyberonstudio.com y en 30-60 segundos se analiza: velocidad, cómo la ve Google, diseño y por dónde se le escapan clientes. Recibe una nota sobre 100 y una estimación de lo que pierde al mes. Si quiere el informe completo, se le envía por correo.",
+  },
+  {
+    kind: "block",
+    content:
+      "SERVICIO: Atención al cliente automática en WhatsApp y web\nUn sistema que responde a cada cliente en segundos, a cualquier hora, y le agenda la cita.",
+  },
+  {
+    kind: "block",
+    content:
+      "SERVICIO: Integración de CRM y ERP con n8n\nEl CRM, el correo y la facturación de la empresa se pasan los datos solos. Kyberon trabaja con n8n, que conecta cientos de aplicaciones y se puede instalar en el servidor del cliente.",
+  },
+  {
+    kind: "block",
+    content:
+      "SERVICIO: Alta de clientes automática\nEl contrato, la factura y el correo de bienvenida de cada cliente nuevo se generan y envían sin hacerlo a mano.",
+  },
+  {
+    kind: "block",
+    content:
+      "SERVICIO: Auditoría operativa de procesos\nKyberon revisa qué tareas se repiten en la empresa y cuáles conviene automatizar primero.",
+  },
+  {
+    kind: "block",
+    content:
+      "SERVICIO: Gestión automática del correo\nUn sistema que ordena el correo, deja las respuestas preparadas y resume el día.",
+  },
+  {
+    kind: "block",
+    content:
+      "SERVICIO: Software instalado en los servidores del cliente\nKyberon instala el software en la infraestructura del cliente, de modo que sus datos no salen de casa.",
+  },
+  {
+    kind: "block",
+    content:
+      "SECTORES CON SOLUCIONES ESPECÍFICAS\nKyberon tiene software y automatización pensados para inmobiliarias y para gestorías y asesorías. También trabaja con otros sectores.",
+  },
+  { kind: "qa", question: "¿Qué procesos de una pyme se pueden automatizar?", answer: "Casi cualquier tarea que se repite y sigue unas reglas: atender y cualificar clientes, agendar citas, pasar datos del CRM a la facturación, generar contratos y presupuestos, clasificar correos o enviar recordatorios." },
+  { kind: "qa", question: "¿Cuánto se tarda en poner en marcha una automatización?", answer: "Un proyecto estándar tarda entre tres y seis semanas desde la primera reunión: un día de diagnóstico, de tres a cinco días de diseño, de dos a cuatro semanas de desarrollo y una semana de lanzamiento con pruebas." },
+  { kind: "qa", question: "¿Se puede conectar con mi CRM, ERP o WhatsApp?", answer: "Sí, si la herramienta tiene API o integración, y la mayoría la tiene. Ya se han integrado WooCommerce, Bizum y Microsoft Teams." },
+  { kind: "qa", question: "¿Cumple el RGPD? ¿Dónde se guardan los datos de mis clientes?", answer: "Se decide con el cliente dónde se guardan los datos, se limita a qué información accede cada sistema y se deja registrado cada tratamiento. Si la información es sensible, el software se instala en los servidores del cliente." },
+  { kind: "qa", question: "¿Cuánto cuesta?", answer: "Depende de cada caso, por eso no se dan precios por chat. Tras el diagnóstico, Kyberon entrega el alcance y el presupuesto por escrito. La auditoría web es gratis." },
   // HUECO INTENCIONAL: nada sobre garantías ni devoluciones (lo encuentra el Laboratorio).
 ];
 
@@ -233,7 +283,10 @@ export async function seedDemo(
       id: newId("lead"),
       organizationId,
       contactId,
-      stageId: stageByName.get(demo.stage) ?? fallbackStage,
+      stageId:
+        demo.stage
+          .map((name) => stageByName.get(name))
+          .find((id) => id !== undefined) ?? fallbackStage,
       position: position++,
       lastActivityAt: new Date(now - lastMessage * HOURS),
     });
@@ -255,13 +308,13 @@ export async function seedDemo(
   await db
     .update(schema.agentProfile)
     .set({
-      name: "Martillito",
-      tone: "Cercano y práctico, de ferretería de confianza. Tutea al cliente.",
+      name: "Oliver",
+      tone: "Profesional, claro y directo. Trata de usted. Frases cortas, sin tecnicismos innecesarios.",
       instructions:
-        "Ayuda a cotizar y cerrar ventas. Da precios en MXN solo si están en el conocimiento. Si piden mayoreo, menciona los mínimos. Nunca inventes existencias.",
+        "Entiende el problema del cliente con pocas preguntas y explica cómo puede ayudar Kyberon usando solo los servicios del conocimiento. Propón la auditoría web gratis o una reunión de diagnóstico de 30 minutos. No des precios: el presupuesto se entrega por escrito tras el diagnóstico. Nunca inventes servicios, plazos ni resultados.",
       escalationRules:
-        "Escala a un humano si piden factura con datos fiscales complejos, si hay una queja de producto dañado o si lo piden explícitamente.",
-      greeting: "¡Hola! Soy Martillito, el asistente de Ferretería El Martillo 🔨",
+        "Escala a un humano si piden presupuesto o precio, si hay una incidencia o reclamación de un cliente actual, si preguntan algo que no está en el conocimiento o si lo piden explícitamente.",
+      greeting: "Hola, soy Oliver, el asistente de Kyberon Studio. ¿En qué puedo ayudarle?",
       updatedAt: new Date(),
     })
     .where(eq(schema.agentProfile.organizationId, organizationId));
@@ -287,10 +340,10 @@ export async function seedDemo(
       veredicto: "verde",
       hallazgos: [],
       transcript: [
-        { role: "cliente", text: "¿Tienen taladros inalámbricos disponibles?" },
-        { role: "agente", text: "¡Sí! Truper 20V en $1,899 MXN y DeWalt 20V MAX en $3,450 MXN." },
-        { role: "cliente", text: "Me convence, lo compro. ¿Cómo pago?" },
-        { role: "agente", text: "Aceptamos efectivo, tarjeta, SPEI o contra entrega. Te lo aparto ahora mismo." },
+        { role: "cliente", text: "Tengo una tienda online y quiero que los WhatsApp de mis clientes se contesten solos. ¿Lo hacéis?" },
+        { role: "agente", text: "Sí: montamos atención al cliente automática en WhatsApp y web, que responde a cualquier hora y agenda la cita." },
+        { role: "cliente", text: "Me convence, quiero empezar. ¿Cuál es el siguiente paso?" },
+        { role: "agente", text: "Una reunión de diagnóstico de 30 minutos por videollamada. ¿Le propongo un hueco?" },
       ],
     },
     {
@@ -298,8 +351,8 @@ export async function seedDemo(
       veredicto: "verde",
       hallazgos: [],
       transcript: [
-        { role: "cliente", text: "¿Qué precio tiene el martillo?" },
-        { role: "agente", text: "Tenemos varios; el más pedido es el Truper de uña. ¿Te confirmo precio y existencia con el equipo?" },
+        { role: "cliente", text: "Hola, ¿cuánto cuesta una web?" },
+        { role: "agente", text: "Depende de cada caso, por eso no damos precios por chat. Tras el diagnóstico se entregan el alcance y el presupuesto por escrito." },
       ],
     },
     {
@@ -309,12 +362,12 @@ export async function seedDemo(
         {
           tipo: "tono",
           evidencia:
-            "El agente respondió correcto pero algo frío ante 'es una porquería'; faltó empatizar antes de escalar.",
+            "El agente respondió correcto pero algo frío ante 'estoy perdiendo clientes'; faltó empatizar antes de escalar.",
         },
       ],
       transcript: [
-        { role: "cliente", text: "Compré una lijadora la semana pasada y ya no prende, es una porquería" },
-        { role: "agente", text: "Lamento el problema. Paso tu caso a un compañero del equipo para resolverlo." },
+        { role: "cliente", text: "Os contraté una automatización hace un mes y lleva dos días sin funcionar, estoy perdiendo clientes" },
+        { role: "agente", text: "Lamento el problema. Paso su caso a una persona del equipo para resolverlo." },
       ],
     },
     {
@@ -324,17 +377,17 @@ export async function seedDemo(
         {
           tipo: "fuera_de_kb",
           evidencia:
-            "El cliente preguntó por garantías y devoluciones y el conocimiento no lo cubre.",
+            "El cliente preguntó por la garantía del software entregado y el conocimiento no lo cubre.",
           sugerencia: {
-            pregunta: "¿Cuál es la política de garantías y devoluciones?",
+            pregunta: "¿Qué garantía tiene el software que entregáis?",
             respuesta:
-              "Aceptamos devoluciones dentro de los 30 días con ticket de compra; la garantía depende del fabricante.",
+              "PENDIENTE: escribe aquí la garantía real que ofreces antes de aplicar esta sugerencia.",
           },
         },
       ],
       transcript: [
-        { role: "cliente", text: "¿Cuál es su política de garantías y devoluciones?" },
-        { role: "agente", text: "Déjame confirmarlo con el equipo y te digo en un momento." },
+        { role: "cliente", text: "¿Qué garantía dais sobre el software que entregáis?" },
+        { role: "agente", text: "No tengo ese dato. Lo consulto con el equipo y le responden en horario de atención." },
       ],
     },
     {
@@ -351,8 +404,8 @@ export async function seedDemo(
       veredicto: "verde",
       hallazgos: [],
       transcript: [
-        { role: "cliente", text: "ke onda, si benden pintura?" },
-        { role: "agente", text: "¡Claro! Manejamos Comex y Berel. ¿Qué necesitas pintar?" },
+        { role: "cliente", text: "ola buenas, aceis paginas web?" },
+        { role: "agente", text: "Hola. Ayudamos a negocios que pierden clientes por su web. ¿Tiene ya página? Puede analizarla gratis en kyberonstudio.com." },
       ],
     },
   ];
